@@ -53,26 +53,14 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    // set up app
+    // Set up the app.
     let matches = make_app().get_matches();
     let pre = SyntectProcessor;
 
-    // determine what behaviour has been requested
+    // Determine what behaviour has been requested.
     if let Some(sub_args) = matches.subcommand_matches("supports") {
-        // handle cmdline supports
         handle_supports(&pre, sub_args)
     } else {
-        // handle preprocessing
         handle_preprocessing(&pre)
     }
-//     let r = mdbook_syntect::preprocess::process_chapter(r"Hello world!
-// ```rs
-// fn main() {
-
-// }
-// ```
-// Some more text :)".into());
-//     dbg!(&r);
-//     println!("{}", &r);
-//     Ok(())
 }

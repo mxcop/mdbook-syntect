@@ -18,6 +18,7 @@ impl Preprocessor for SyntectProcessor {
     }
 
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+        // Load the book chapters.
         let mut chapters = Vec::with_capacity(book.sections.len());
         book.for_each_mut(|item| {
             if let BookItem::Chapter(chapter) = item {
@@ -25,6 +26,7 @@ impl Preprocessor for SyntectProcessor {
             }
         });
 
+        // Process all the book chapters.
         let mut contents: Vec<_> = chapters
             .into_iter()
             .rev()
@@ -35,6 +37,7 @@ impl Preprocessor for SyntectProcessor {
             })
             .collect();
 
+        // Update the book with the processed contents.
         book.for_each_mut(|item| {
             if let BookItem::Chapter(chapter) = item {
                 chapter.content = contents.pop().expect("Chapter number mismatch.");
@@ -45,7 +48,7 @@ impl Preprocessor for SyntectProcessor {
     }
 }
 
-/// Do the syntex highlighting for codeblocks using syntect.
+/// Do the syntax highlighting for codeblocks using syntect.
 pub fn process_chapter(
     raw_content: String
 ) -> String {
@@ -61,6 +64,7 @@ pub fn process_chapter(
         .join("")
 }
 
+/// Scan a document and extract render events.
 pub fn get_render_tasks<'a>(
     raw_content: &'a str
 ) -> Vec<Render<'a>> {
@@ -76,7 +80,9 @@ pub fn get_render_tasks<'a>(
             Event::Begin(begin) => checkpoint = begin,
             Event::TextEnd(end) => rendering.push(Render::Text(&raw_content[checkpoint..end])),
             Event::BlockEnd(end) => {
+                // Extract the language from the first line of the codeblock "```rs ..."
                 if let Some(lang) = raw_content[checkpoint..end].lines().next() {
+                    // The "+2" is to skip the \r\n from the first line.
                     rendering.push(Render::CodeBlock(&raw_content[(checkpoint+lang.len()+2)..end], lang));
                 } else {
                     rendering.push(Render::CodeBlock(&raw_content[checkpoint..end], ""));
