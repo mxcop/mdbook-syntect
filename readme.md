@@ -12,6 +12,7 @@ However, feel free to contribute \:)
 ```toml
 # add this line to your book.toml
 [preprocessor.syntect]
+custom-theme = "assets/<your-theme>.tmTheme"
 ```
 
 <br>

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use mdbook::{book::Book, errors::Error, preprocess::{Preprocessor, PreprocessorContext}, BookItem};
 
-use crate::{render::{self, Render}, scan::{Event, Scan}};
+use crate::{cfg::{get_config, SyntectConfig}, embed::inject_stylesheet, render::{self, Render}, scan::{Event, Scan}};
 
 pub struct SyntectProcessor;
 
@@ -17,7 +17,9 @@ impl Preprocessor for SyntectProcessor {
         "syntect"
     }
 
-    fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+    fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+        let cfg = get_config(&ctx.config);
+
         // Load the book chapters.
         let mut chapters = Vec::with_capacity(book.sections.len());
         book.for_each_mut(|item| {
@@ -31,8 +33,9 @@ impl Preprocessor for SyntectProcessor {
             .into_iter()
             .rev()
             .map(|raw_content| {
+                let styled_content = inject_stylesheet(&raw_content).unwrap();
                 process_chapter(
-                    raw_content
+                    &cfg, styled_content
                 )
             })
             .collect();
@@ -50,6 +53,7 @@ impl Preprocessor for SyntectProcessor {
 
 /// Do the syntax highlighting for codeblocks using syntect.
 pub fn process_chapter(
+    cfg: &SyntectConfig,
     raw_content: String
 ) -> String {
     get_render_tasks(&raw_content)
@@ -57,7 +61,7 @@ pub fn process_chapter(
         .map(|rend| match rend {
             Render::Text(t) => t.into(),
             Render::CodeBlock(item, lang) => {
-                render::render(item, lang).into()
+                render::render(cfg, item, lang).into()
             }
         })
         .collect::<Vec<Cow<_>>>()
@@ -82,8 +86,12 @@ pub fn get_render_tasks<'a>(
             Event::BlockEnd(end) => {
                 // Extract the language from the first line of the codeblock "```rs ..."
                 if let Some(lang) = raw_content[checkpoint..end].lines().next() {
-                    // The "+2" is to skip the \r\n from the first line.
-                    rendering.push(Render::CodeBlock(&raw_content[(checkpoint+lang.len()+2)..end], lang));
+                    // Skip any newline characters after the language specifier.
+                    let mut start = checkpoint + lang.len();
+                    while raw_content.chars().nth(start) == Some('\r') || raw_content.chars().nth(start) == Some('\n') {
+                        start += 1;
+                    }
+                    rendering.push(Render::CodeBlock(&raw_content[start..end], lang));
                 } else {
                     rendering.push(Render::CodeBlock(&raw_content[checkpoint..end], ""));
                 }

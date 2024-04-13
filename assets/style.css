@@ -1,0 +1,5 @@
+pre.code-block {
+    padding: 2rem;
+    overflow: auto;
+    border-radius: 6px;
+}
